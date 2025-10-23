@@ -38,6 +38,8 @@ public class Pistola : MonoBehaviour
         {
             line.SetPosition(0, firePoint.position);
             line.SetPosition(1, hit.point);
+
+            Instantiate(HitFx, hit.point, Quaternion.LookRotation(hit.normal));
         }
         else
         {
