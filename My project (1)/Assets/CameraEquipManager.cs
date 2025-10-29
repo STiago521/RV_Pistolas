@@ -2,129 +2,138 @@
 
 public class CameraEquipManager : MonoBehaviour
 {
-    [Header("Refs")]
-    public GameObject cameraItem;        // cámara prop (el modelo que sostienes)
-    public Transform handSocket;         // punto en la mano
-    public Transform holsterSocket;      // punto de guardado
-    public GameObject handsRoot;         // modelos/rig de manos
-    public GameObject otherModeObject;   // objeto a activar en modo alterno
+    public Transform player;              // referencia para medir distancia (cabeza/pecho del jugador)
+    public GameObject cameraItem;         // la cámara física del juego (empieza en el suelo)
+    public Transform handSocket;          // punto en la mano
+    public Transform holsterSocket;       // punto de guardado
+    public GameObject handsRoot;          // modelos/rig de manos
+    public GameObject otherModeObject;    // objeto que se activa en modo alterno
 
-    [Header("Teclas")]
-    public KeyCode toggleCameraKey = KeyCode.C;  // sacar/guardar cámara
-    public KeyCode toggleModeKey = KeyCode.V;  // activar/desactivar modo alterno
+    [Header("Controles")]
+    public KeyCode pickupKey = KeyCode.E;  // recoger del suelo
+    public KeyCode toggleCameraKey = KeyCode.C;  // mano <-> holster
+    public KeyCode dropKey = KeyCode.G;  // soltar al suelo
+    public KeyCode toggleModeKey = KeyCode.V;  // modo alterno
 
-    [Header("Ajustes")]
-    public bool freezePhysicsWhenEquipped = true; // congela rigidbody al equipar/guardar
-    public bool hideCameraItemInOtherMode = true; // oculta la cámara en modo alterno
+    [Header("Parámetros")]
+    public float pickupRadius = 2.0f;           // distancia máxima para recoger
+    public bool hideCameraItemInOtherMode = true;
+    public bool freezePhysicsWhenSocketed = true;
 
-    bool cameraEquipped;   // ¿en mano?
-    bool otherMode;        // ¿modo alterno activo?
+    enum State { OnGround, InHand, InHolster }
+    State state = State.OnGround;
+    bool otherMode;
+
     Rigidbody camRb;
     Collider[] camCols;
 
     void Awake()
     {
-        if (!cameraItem || !handSocket || !holsterSocket)
+        if (!player || !cameraItem || !handSocket || !holsterSocket)
         {
-            Debug.LogError("⚠️ Asigna cameraItem, handSocket y holsterSocket en el Inspector.");
+            Debug.LogError("Asigna player, cameraItem, handSocket y holsterSocket.");
             enabled = false; return;
         }
-
         camRb = cameraItem.GetComponent<Rigidbody>();
         camCols = cameraItem.GetComponentsInChildren<Collider>(true);
 
-        // Arranca guardada en el holster
-        PutInSocket(cameraItem.transform, holsterSocket, true);
-        cameraEquipped = false;
-
-        // Asegura estado inicial del modo alterno
-        SetOtherMode(false);
+        // Asegura estado inicial: en el suelo
+        SetPhysicsFree(true);
+        if (handsRoot) handsRoot.SetActive(true);
+        if (otherModeObject) otherModeObject.SetActive(false);
     }
 
     void Update()
     {
-        if (Input.GetKeyDown(toggleCameraKey))
+        // 1) Recoger del suelo
+        if (state == State.OnGround && Input.GetKeyDown(pickupKey) && CanPickup())
+            EquipToHand();
+
+        // 2) Alternar mano <-> holster
+        if (!otherMode && Input.GetKeyDown(toggleCameraKey))
         {
-            ToggleCameraEquip();
+            if (state == State.InHand) PutInHolster();
+            else if (state == State.InHolster) EquipToHand();
+            // si está en el suelo, primero recoge (E)
         }
 
+        // 3) Soltar al suelo
+        if (!otherMode && Input.GetKeyDown(dropKey))
+            DropToGround();
+
+        // 4) Modo alterno (apaga manos y cámara, enciende otro objeto)
         if (Input.GetKeyDown(toggleModeKey))
-        {
             SetOtherMode(!otherMode);
-        }
     }
 
-    void ToggleCameraEquip()
+    bool CanPickup()
     {
-        if (otherMode) return; // si estás en modo alterno, no permitas sacar/guardar
+        float d = Vector3.Distance(player.position, cameraItem.transform.position);
+        return d <= pickupRadius;
+    }
 
-        cameraEquipped = !cameraEquipped;
-        if (cameraEquipped)
-            PutInSocket(cameraItem.transform, handSocket, true);
-        else
-            PutInSocket(cameraItem.transform, holsterSocket, true);
+    void EquipToHand()
+    {
+        StickToSocket(handSocket);
+        state = State.InHand;
+    }
+
+    void PutInHolster()
+    {
+        StickToSocket(holsterSocket);
+        state = State.InHolster;
+    }
+
+    void DropToGround()
+    {
+        // suelta con física delante del jugador
+        cameraItem.transform.SetParent(null, true);
+        SetPhysicsFree(true);
+        if (camRb)
+        {
+            camRb.AddForce(Camera.main.transform.forward * 1.5f, ForceMode.VelocityChange);
+            camRb.AddTorque(Random.insideUnitSphere * 2f, ForceMode.VelocityChange);
+        }
+        state = State.OnGround;
+    }
+
+    void StickToSocket(Transform socket)
+    {
+        cameraItem.transform.SetParent(socket, false);
+        cameraItem.transform.localPosition = Vector3.zero;
+        cameraItem.transform.localRotation = Quaternion.identity;
+        SetPhysicsFree(false); // congelar física al “anclar”
+    }
+
+    void SetPhysicsFree(bool free)
+    {
+        if (camRb) camRb.isKinematic = !free;
+        if (camCols != null) foreach (var c in camCols) c.isTrigger = !free;
+        if (camRb && !free)
+        {
+            camRb.linearVelocity = Vector3.zero;
+            camRb.angularVelocity = Vector3.zero;
+        }
     }
 
     void SetOtherMode(bool enable)
     {
         otherMode = enable;
 
-        // 1) Manos ON/OFF
+        // apagar/encender manos
         if (handsRoot) handsRoot.SetActive(!enable);
 
-        // 2) Cámara-item ON/OFF (según preferencia)
+        // cámara visible/invisible
         if (hideCameraItemInOtherMode && cameraItem)
-        {
             cameraItem.SetActive(!enable);
-        }
 
-        // 3) Objeto alterno ON/OFF
+        // objeto alterno
         if (otherModeObject) otherModeObject.SetActive(enable);
 
-        // 4) Si entro al modo alterno y la cámara estaba equipada, la guardo
-        if (enable && cameraEquipped)
-        {
-            cameraEquipped = false;
-            PutInSocket(cameraItem.transform, holsterSocket, true);
-        }
-    }
+        // si entro en modo alterno con la cámara en mano, la guardo
+        if (enable && state == State.InHand)
+            PutInHolster();
 
-    void PutInSocket(Transform t, Transform socket, bool freeze)
-    {
-        t.SetParent(socket, worldPositionStays: false);
-        t.localPosition = Vector3.zero;
-        t.localRotation = Quaternion.identity;
-
-        if (freezePhysicsWhenEquipped && freeze)
-        {
-            if (camRb)
-            {
-                camRb.isKinematic = true;
-                camRb.linearVelocity = Vector3.zero;
-                camRb.angularVelocity = Vector3.zero;
-            }
-            if (camCols != null)
-                foreach (var c in camCols) c.isTrigger = true; // evita empujones
-        }
-        else
-        {
-            if (camRb) camRb.isKinematic = false;
-            if (camCols != null)
-                foreach (var c in camCols) c.isTrigger = false;
-        }
-    }
-
-    // Si quieres “soltar” la cámara al mundo (no holster)
-    public void DropCameraToWorld()
-    {
-        cameraEquipped = false;
-        cameraItem.transform.SetParent(null, true);
-        if (camRb)
-        {
-            camRb.isKinematic = false;
-            camRb.AddForce(Camera.main.transform.forward * 1.5f, ForceMode.VelocityChange);
-        }
-        if (camCols != null)
-            foreach (var c in camCols) c.isTrigger = false;
+        // al salir, no hacemos nada extra; queda donde estaba (holster o suelo)
     }
 }
