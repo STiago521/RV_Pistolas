@@ -3,7 +3,117 @@ guid: ddc9bd8dee0630c489c2cce7f9595d8c
 ModelImporter:
   serializedVersion: 22200
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Material.001
+    second: {fileID: 2100000, guid: 2f8749da530b39246934bbb97bfd2877, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Material.022
+    second: {fileID: 2100000, guid: 78f4f52144704294591a558bc6cae204, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: black wood
+    second: {fileID: 2100000, guid: 78f4f52144704294591a558bc6cae204, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: black wood and metal
+    second: {fileID: 2100000, guid: 2f8749da530b39246934bbb97bfd2877, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: black wood and metal.001
+    second: {fileID: 2100000, guid: 2f8749da530b39246934bbb97bfd2877, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: black wood.001
+    second: {fileID: 2100000, guid: 2f8749da530b39246934bbb97bfd2877, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: brick1
+    second: {fileID: 2100000, guid: 2f8749da530b39246934bbb97bfd2877, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: brick1.001
+    second: {fileID: 2100000, guid: 2f8749da530b39246934bbb97bfd2877, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: brick2
+    second: {fileID: 2100000, guid: 2f8749da530b39246934bbb97bfd2877, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: brick2.001
+    second: {fileID: 2100000, guid: 2f8749da530b39246934bbb97bfd2877, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: brown wood 2
+    second: {fileID: 2100000, guid: 2f8749da530b39246934bbb97bfd2877, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: brown wood 2.001
+    second: {fileID: 2100000, guid: 2f8749da530b39246934bbb97bfd2877, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: brown wood 3
+    second: {fileID: 2100000, guid: 2f8749da530b39246934bbb97bfd2877, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: brown wood 3.001
+    second: {fileID: 2100000, guid: 2f8749da530b39246934bbb97bfd2877, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: galss
+    second: {fileID: 2100000, guid: 59075f775befbc94fb3f2bc60ca0f90b, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: galss.001
+    second: {fileID: 2100000, guid: 59075f775befbc94fb3f2bc60ca0f90b, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: stone2.002
+    second: {fileID: 2100000, guid: 2f8749da530b39246934bbb97bfd2877, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: stone2.003
+    second: {fileID: 2100000, guid: 2f8749da530b39246934bbb97bfd2877, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: white wood 3
+    second: {fileID: 2100000, guid: 78f4f52144704294591a558bc6cae204, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: white wood 3.001
+    second: {fileID: 2100000, guid: 2f8749da530b39246934bbb97bfd2877, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: white wood2
+    second: {fileID: 2100000, guid: 2f8749da530b39246934bbb97bfd2877, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: white wood2.001
+    second: {fileID: 2100000, guid: 2f8749da530b39246934bbb97bfd2877, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0
