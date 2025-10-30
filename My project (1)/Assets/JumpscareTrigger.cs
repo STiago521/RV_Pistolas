@@ -7,7 +7,7 @@ public class JumpscareTrigger : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag("MainCamera")) // si el jugador entra
+        if (other.CompareTag("Player")) // si el jugador entra
         {
             StartCoroutine(ShowJumpscare());
         }

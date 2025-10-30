@@ -1,20 +1,24 @@
 using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit;
 using System.Linq;
+using System.Collections;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 using UnityEngine.XR.Interaction.Toolkit.Interactors;
 
 public class XRPickupUseMode : MonoBehaviour
 {
+    // --- Evento estático: avisa un flash (posición, radio) ---
+    public static System.Action<Vector3, float> OnFlash;
+
     [Header("Refs")]
     public XRGrabInteractable cameraItem;      // Cámara con XRGrabInteractable
-    public GameObject leftHandRoot;            // GO raíz mano izquierda (malla/rig)
-    public GameObject rightHandRoot;           // GO raíz mano derecha
-    public GameObject otherObject;             // Objeto que se activa en modo "usar"
+    public GameObject leftHandRoot;            // mano izquierda (GO raíz)
+    public GameObject rightHandRoot;           // mano derecha (GO raíz)
+    public GameObject otherObject;             // objeto activo en modo "usar"
 
     [Header("Attach EN LA CÁMARA")]
-    public Transform gripRight;                // hijo en cameraItem (pose derecha)
-    public Transform gripLeft;                 // hijo en cameraItem (pose izquierda)
+    public Transform gripRight;                // pose mano derecha
+    public Transform gripLeft;                 // pose mano izquierda
 
     [Header("Interactores (XRDirectInteractor)")]
     public XRBaseInteractor leftHandInteractor;
@@ -23,25 +27,32 @@ public class XRPickupUseMode : MonoBehaviour
     [Header("Controles")]
     public KeyCode pickupKey = KeyCode.G;      // Recoger (no suelta)
     public KeyCode useKey = KeyCode.V;      // Modo usar ON/OFF
+    public KeyCode flashKey = KeyCode.Mouse0; // Tecla alternativa al click
 
     [Header("Pickup")]
-    public Transform playerRef;                // referencia (cabeza/pecho)
-    public float pickupRadius = 2.0f;          // distancia máxima para G
+    public Transform playerRef;
+    public float pickupRadius = 2.0f;
 
-    bool useMode;                              // ¿modo usar activo?
+    [Header("Flash de luz")]
+    public Light flashLight;                   // Point Light (asígnala)
+    public float flashDuration = 0.12f;        // segundos encendida
+    public float flashRadius = 5.0f;         // radio para eliminar fantasmas
+    public Transform flashOrigin;              // desde dónde medir (si null, usa flashLight.transform)
+
+    bool useMode;
 
     void Start()
     {
         if (!cameraItem || !leftHandRoot || !rightHandRoot || !otherObject)
             Debug.LogWarning("Asigna cameraItem, leftHandRoot, rightHandRoot y otherObject.");
 
-        // Suscripción: cuando se agarre normalmente, coloca el grip correcto
         cameraItem.selectEntered.AddListener(OnGrabSetGrip);
 
-        // Estado inicial
         SetHandsVisible(true);
         otherObject.SetActive(false);
         cameraItem.gameObject.SetActive(true);
+
+        if (flashLight) flashLight.enabled = false;
     }
 
     void OnDestroy()
@@ -51,30 +62,24 @@ public class XRPickupUseMode : MonoBehaviour
 
     void Update()
     {
-        // Recoger con G (no suelta)
-        if (Input.GetKeyDown(pickupKey))
-            TryPickupWithG();
+        if (Input.GetKeyDown(pickupKey)) TryPickupWithG();
+        if (Input.GetKeyDown(useKey)) ToggleUseMode();
 
-        // Usar: manos OFF + cámara OFF + otro ON (y revertir)
-        if (Input.GetKeyDown(useKey))
-            ToggleUseMode();
+        // Disparo del flash cuando ESTÁ en uso (manos OFF, cam OFF, other ON)
+        if (useMode && (Input.GetMouseButtonDown(0) || Input.GetKeyDown(flashKey)))
+            StartCoroutine(DoFlash());
     }
 
-    // --- Alinear grips al agarrar normalmente ---
+    // Alinear grips al agarrar normalmente
     void OnGrabSetGrip(SelectEnterEventArgs args)
     {
         if (!cameraItem) return;
-
-        // ¿Qué mano agarró?
         bool isLeft = args.interactorObject.transform.name.ToLower().Contains("left");
         Transform grip = isLeft ? gripLeft : gripRight;
-
         if (!grip) return;
 
-        // 1) Fija el attach del ITEM al grip adecuado
         cameraItem.attachTransform = grip;
 
-        // 2) (Re)coloca el attach de la MANO sobre el grip (por si su attach está distinto)
         var interactor = args.interactorObject as XRBaseInteractor;
         if (interactor && interactor.attachTransform)
         {
@@ -83,46 +88,28 @@ public class XRPickupUseMode : MonoBehaviour
         }
     }
 
-    // --- Recoger con G: NO suelta si ya está agarrada ---
+    // Recoger con G (no suelta si ya está agarrada)
     void TryPickupWithG()
     {
-        if (!cameraItem) return;
+        if (!cameraItem || cameraItem.isSelected) return;
+        if (playerRef && Vector3.Distance(playerRef.position, cameraItem.transform.position) > pickupRadius) return;
 
-        // Si ya está agarrada por cualquier mano, no hacemos nada
-        if (cameraItem.isSelected) return;
+        XRBaseInteractor hand = (rightHandInteractor && rightHandInteractor.isActiveAndEnabled)
+            ? rightHandInteractor
+            : (leftHandInteractor && leftHandInteractor.isActiveAndEnabled ? leftHandInteractor : null);
 
-        // Comprobar distancia al jugador
-        if (playerRef && Vector3.Distance(playerRef.position, cameraItem.transform.position) > pickupRadius)
-            return;
+        if (!hand) { Debug.LogWarning("No hay interactor de mano activo."); return; }
 
-        // Elegir mano disponible (prioriza derecha)
-        XRBaseInteractor hand = null;
-        if (rightHandInteractor && rightHandInteractor.isActiveAndEnabled) hand = rightHandInteractor;
-        else if (leftHandInteractor && leftHandInteractor.isActiveAndEnabled) hand = leftHandInteractor;
-
-        if (!hand)
-        {
-            Debug.LogWarning("No hay interactor de mano activo para recoger con G.");
-            return;
-        }
-
-        // Determinar grip por mano
         bool isLeft = hand.transform.name.ToLower().Contains("left");
         Transform grip = isLeft ? gripLeft : gripRight;
 
-        if (grip)
+        if (grip && hand.attachTransform)
         {
-            // Coloca el attach de la mano sobre el grip ANTES de seleccionar
-            if (hand.attachTransform)
-            {
-                hand.attachTransform.position = grip.position;
-                hand.attachTransform.rotation = grip.rotation;
-            }
-            // Fija attach del item al grip
+            hand.attachTransform.position = grip.position;
+            hand.attachTransform.rotation = grip.rotation;
             cameraItem.attachTransform = grip;
         }
 
-        // Forzar selección XR (no se suelta)
         var im = cameraItem.interactionManager ?? hand.interactionManager;
         if (im != null)
             im.SelectEnter(hand as IXRSelectInteractor, cameraItem as IXRSelectInteractable);
@@ -130,30 +117,43 @@ public class XRPickupUseMode : MonoBehaviour
             Debug.LogWarning("Sin XRInteractionManager para SelectEnter.");
     }
 
-    // --- Modo usar (V) ---
+    // Modo usar: manos OFF + cam OFF + other ON (y revertir)
     void ToggleUseMode()
     {
         useMode = !useMode;
 
         if (useMode)
         {
-            // 1) Apagar manos
             SetHandsVisible(false);
-
-            // 2) Si está agarrada, soltar de forma segura y apagar la cámara
             SafeReleaseIfSelected();
             cameraItem.gameObject.SetActive(false);
-
-            // 3) Activar el objeto alterno
             otherObject.SetActive(true);
         }
         else
         {
-            // Revertir
             otherObject.SetActive(false);
             cameraItem.gameObject.SetActive(true);
             SetHandsVisible(true);
         }
+    }
+
+    IEnumerator DoFlash()
+    {
+        if (!flashLight) yield break;
+
+        // Posición del flash
+        Transform origin = flashOrigin ? flashOrigin : flashLight.transform;
+
+        // Enciende luz
+        flashLight.enabled = true;
+
+        // Notifica a los fantasmas para que se eliminen en el radio
+        OnFlash?.Invoke(origin.position, flashRadius);
+
+        yield return new WaitForSeconds(flashDuration);
+
+        // Apaga luz
+        flashLight.enabled = false;
     }
 
     // Utilidades
@@ -166,7 +166,6 @@ public class XRPickupUseMode : MonoBehaviour
     void SafeReleaseIfSelected()
     {
         if (!cameraItem || !cameraItem.isSelected) return;
-
         var im = cameraItem.interactionManager;
         if (im == null) return;
 

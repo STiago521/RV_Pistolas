@@ -1,4 +1,4 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 
@@ -11,8 +11,8 @@ public class Ghost : MonoBehaviour
     public GameObject canvasSusto;      // UI opcional
 
     [Header("Juego")]
-    public float hitRadius = 0.6f;      // “golpe” al llegar
-    public int maxVivos = 50;           // límite opcional
+    public float hitRadius = 0.6f;
+    public int maxVivos = 50;
 
     public enum Difficulty { Easy, Normal, Hard, Insane }
     public Difficulty difficulty = Difficulty.Normal;
@@ -26,17 +26,20 @@ public class Ghost : MonoBehaviour
     readonly List<Transform> vivos = new List<Transform>();
     Coroutine loop;
 
-    void OnEnable() { loop = StartCoroutine(RespawnLoop()); }
-    void OnDisable() { if (loop != null) StopCoroutine(loop); vivos.Clear(); }
-
-    // --- API para cambiar dificultad en runtime ---
-    public void SetDifficulty(Difficulty d)
+    void OnEnable()
     {
-        difficulty = d;
-        if (loop != null) { StopCoroutine(loop); loop = StartCoroutine(RespawnLoop()); }
+        loop = StartCoroutine(RespawnLoop());
+        XRPickupUseMode.OnFlash += HandleFlash;   // â† escuchar flashes
     }
 
-    // --- Spawner principal ---
+    void OnDisable()
+    {
+        if (loop != null) StopCoroutine(loop);
+        vivos.Clear();
+        XRPickupUseMode.OnFlash -= HandleFlash;
+    }
+
+    // Spawner principal
     IEnumerator RespawnLoop()
     {
         while (true)
@@ -51,7 +54,6 @@ public class Ghost : MonoBehaviour
         }
     }
 
-    // --- Movimiento directo de TODOS los fantasmas ---
     void Update()
     {
         if (!target) return;
@@ -59,7 +61,6 @@ public class Ghost : MonoBehaviour
         float speed = SpeedForDiff();
         Vector3 targetPos = target.position;
 
-        // recorrer al revés por si destruimos
         for (int i = vivos.Count - 1; i >= 0; i--)
         {
             var t = vivos[i];
@@ -67,7 +68,7 @@ public class Ghost : MonoBehaviour
 
             Vector3 dir = (targetPos - t.position).normalized;
             t.position += dir * speed * Time.deltaTime;
-            if (dir.sqrMagnitude > 0.0001f) t.forward = dir; // opcional mirar al objetivo
+            if (dir.sqrMagnitude > 0.0001f) t.forward = dir;
 
             if (Vector3.Distance(t.position, targetPos) <= hitRadius)
             {
@@ -78,7 +79,23 @@ public class Ghost : MonoBehaviour
         }
     }
 
-    // --- Helpers de dificultad ---
+    // --- Flash: eliminar fantasmas dentro de un radio ---
+    void HandleFlash(Vector3 flashPos, float radius)
+    {
+        for (int i = vivos.Count - 1; i >= 0; i--)
+        {
+            var t = vivos[i];
+            if (!t) { vivos.RemoveAt(i); continue; }
+
+            if (Vector3.Distance(t.position, flashPos) <= radius)
+            {
+                Destroy(t.gameObject);
+                vivos.RemoveAt(i);
+            }
+        }
+    }
+
+    // Helpers de dificultad
     float IntervalForDiff() => difficulty switch
     {
         Difficulty.Easy => easyInterval,
